@@ -50,3 +50,4 @@ On every row: `sona_id, age, gender, condition, condition_source, experiment_ver
 - The experiment runs full screen; screens under 900×600 and phones are turned away. Leaving the window or full screen is logged, not blocked.
 - Keys are `L` and `S` (QWERTY assumed). Closing/reloading mid-session loses the data (no partial save).
 - Beyond Inbal's email, I added "even when the + is not on screen" to the first instruction, from your meeting notes ("always direct their gaze to the cross even if it's not there"). Delete it in `experiment.js` if she doesn't want it.
+
