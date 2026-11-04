@@ -163,7 +163,7 @@
 
   timeline.push({
     type: jsPsychHtmlButtonResponse,
-    stimulus: '<div class="left"><h2>Consent</h2><p>[INSERT THE IRB-APPROVED CONSENT / INFORMATION TEXT HERE]</p></div>',
+    stimulus: '<div class="left"><h2>Consent</h2><p>Do you agree to participate in this study?</p></div>',
     choices: ['I agree to participate', 'I do not agree'],
     on_finish: (d) => { if (d.response === 1) jsPsych.abortExperiment('<p>Thank you. You chose not to participate. You may close this window.</p>'); },
   });
@@ -206,14 +206,15 @@
     { on_finish: () => document.body.classList.add('trial-cursor-hidden') }));
   timeline.push(...learningBlock(previewSet, 'preview'));
   timeline.push(page(
-    "<p>That is what the main part looks like.</p>" +
+    "<p>That is what the following part of the experiment looks like.</p>" +
     `<p>You will now see ${nLearn} faces, one at a time, each for ${faceSec} seconds. This part takes about ${learnMin} minutes.</p>` +
-    '<p>Please keep looking at the + whenever it appears, and at the center of the screen the whole time.</p>' +
+    '<p>Throughout the entire experiment, please keep looking at the center of the screen, where the + appears, ' +
+    'even when the + is not on screen.</p>' +
     '<p>Press the SPACE BAR when you are ready to begin.</p>'));
   timeline.push(...learningBlock(learningSet, 'learning'));
 
   timeline.push(page(
-    '<p>Now you will see a series of faces, one at a time.</p>' +
+    '<p>Now you will see a series of 80 faces, one at a time.</p>' +
     '<p>For each face, decide whether you saw it during the first part of the experiment.</p>' +
     '<p>If you think you SAW this face before, press <b>L</b> with your right index finger.<br>' +
     'If you think this face is NEW, press <b>S</b> with your left index finger.</p>' +
