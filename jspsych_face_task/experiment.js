@@ -264,7 +264,7 @@
     { on_finish: () => document.body.classList.add('trial-cursor-hidden') }));
   timeline.push(...learningBlock(previewSet, 'preview'));
   timeline.push(page(
-    "<p>That is what the following part of the experiment looks like.</p>" +
+    "<p>That is what the following part of the experiment looks like:</p>" +
     `<p>You will now see ${nLearn} faces, one at a time, each for ${faceSec} seconds. This part takes about ${learnMin} minutes.</p>` +
     '<p>Throughout the entire experiment, please keep looking at the center of the screen, where the + appears, ' +
     'even when the + is not on screen.</p>' +
