@@ -30,11 +30,12 @@
     const learned = all.filter((v) => v.phase === 'learning').map((v) => v.face_id).join(' ');
     const person = {
       sona_id: first('sona_id'), condition: first('condition'), experiment_version: first('experiment_version'),
-      dev_run: first('timing_scale') !== 1, age: first('age'), gender: first('gender'),
+      dev_run: first('timing_scale') !== 1, age: first('age'), gender: first('gender'), race: first('race'),
     };
     const summ = {};
     ['hit_rate', 'miss_rate', 'false_alarm_rate', 'correct_rejection_rate', 'n_hits', 'n_misses', 'n_false_alarms', 'n_correct_rejections',
-     'd_prime', 'criterion_c', 'criterion_c_prime', 'beta', 'ln_beta', 'a_prime', 'b_double_prime', 'overall_accuracy', 'excluded', 'n_window_blur', 'n_fullscreen_exit',
+     'd_prime', 'criterion_c', 'criterion_c_prime', 'beta', 'ln_beta', 'a_prime', 'b_double_prime', 'overall_accuracy', 'excluded',
+     'est_n_seen_correct', 'est_n_new_correct', 'est_hit_rate', 'est_correct_rejection_rate', 'n_window_blur', 'n_fullscreen_exit',
      'session_duration_min', 'browser', 'browser_version', 'os', 'screen_width', 'screen_height'].forEach((k) => { summ[k] = sum[k]; });
     const rows = all.filter((v) => v.phase === 'test').map((t) => ({
       ...person, trial_num: t.trial_num, face_id: t.face_id, face_sex: t.face_sex, image_filename: t.image_filename,
@@ -113,6 +114,7 @@
   const leftover = shuffle(pool.filter((e) => !previewSet.includes(e)));
   previewSet = shuffle([...previewSet, ...leftover.slice(0, CONFIG.N_PREVIEW_FACES - previewSet.length)]);
 
+  const nOld = manifest.learning.length, nNew = manifest.test.length;   // old / new faces in the test
   const nLearn = learningSet.length;
   const learnSec = CONFIG.LEARN_FIRST_CROSS + nLearn * CONFIG.LEARN_FACE + (nLearn - 1) * CONFIG.LEARN_CROSS;
   const learnMin = Math.max(1, Math.ceil(learnSec / 60));
@@ -195,7 +197,10 @@
     const bc = jsPsych.data.get().filter({ trial_type: 'browser-check' }).values()[0] || {};
     const inter = jsPsych.data.getInteractionData();
     const r4 = (x) => (x === '' ? '' : Math.round(x * 10000) / 10000);
+    const est = jsPsych.data.get().filter({ phase: 'self_estimate' }).values()[0] || {};
     return {
+      est_n_seen_correct: est.est_n_seen_correct, est_n_new_correct: est.est_n_new_correct,
+      est_hit_rate: est.est_hit_rate, est_correct_rejection_rate: est.est_correct_rejection_rate,
       hit_rate: r4(hr), miss_rate: r4(nOld ? 1 - hr : 0), false_alarm_rate: r4(far),
       correct_rejection_rate: r4(nNew ? 1 - far : 0), overall_accuracy: r4(acc),
       n_hits: hits, n_misses: nOld - hits, n_false_alarms: fas, n_correct_rejections: nNew - fas,
@@ -242,14 +247,19 @@
       <label>SONA ID <input name="sona_id" type="text" required value="${sonaFromUrl.replace(/"/g, '')}"></label>
       <label>Age <input name="age" type="number" min="1" max="120" required></label>
       <label>Gender <select name="gender" required><option value="">Select...</option>
-        <option>Man</option><option>Woman</option><option>Other</option></select></label></div>`,
+        <option>Man</option><option>Woman</option><option>Other</option></select></label>
+      <label>Race <select name="race" required><option value="">Select...</option>
+        <option>American Indian or Alaska Native</option><option>Asian</option>
+        <option>Black or African American</option><option>Middle Eastern or North African</option>
+        <option>Native Hawaiian or Pacific Islander</option><option>White</option>
+        <option>Two or more races</option><option>Other</option><option>Prefer not to say</option></select></label></div>`,
     button_label: 'Continue',
     data: { phase: 'demographics' },
-    on_finish: (d) => jsPsych.data.addProperties({ sona_id: d.response.sona_id, age: d.response.age, gender: d.response.gender }),
+    on_finish: (d) => jsPsych.data.addProperties({ sona_id: d.response.sona_id, age: d.response.age, gender: d.response.gender, race: d.response.race }),
   });
   timeline.push({
     type: jsPsychPreload,
-    images: [...previewSet, ...manifest.learning, ...manifest.test].map(img),
+    images: [...[...previewSet, ...manifest.learning, ...manifest.test].map(img), 'keys2.svg'],
     message: '<p>Loading... please wait.</p>', show_progress_bar: true, max_load_time: 120000,
     error_message: '<p>The images could not be loaded. Please check your connection and reload the page.</p>',
   });
@@ -278,7 +288,33 @@
     'If you think this face is NEW, press <b>S</b> with your left index finger.</p>' +
     '<p>Please respond as quickly and as accurately as possible.</p>' +
     '<p>Press the SPACE BAR when you are ready to begin.</p>'));
+  timeline.push({   // response-key reminder: stays up until any key is pressed
+    type: jsPsychHtmlKeyboardResponse, choices: 'ALL_KEYS',
+    stimulus: '<img src="keys2.svg" alt="Keyboard: press L for old, S for new" style="max-height:82vh;max-width:92vw;display:block;margin:0 auto;">' +
+              '<p style="margin-top:0.6em;font-size:0.9em;opacity:0.8">Press any key to begin.</p>',
+    data: { phase: 'key_reminder' },
+  });
   timeline.push(...testBlock);
+
+  // self-estimates, asked in everyday wording (no signal-detection terms)
+  timeline.push({
+    type: jsPsychSurveyHtmlForm,
+    preamble: '<h3>Almost done!</h3><p>Think back to the faces you were just asked about. Your best guess is fine.</p>',
+    html: `<div class="left">
+      <p>Out of the ${nOld} faces that you really had seen before, about how many do you think you correctly said you had seen?</p>
+      <label><input name="est_old" type="number" min="0" max="${nOld}" step="1" required> out of ${nOld}</label>
+      <p>Out of the ${nNew} brand-new faces, about how many do you think you correctly said were new?</p>
+      <label><input name="est_new" type="number" min="0" max="${nNew}" step="1" required> out of ${nNew}</label></div>`,
+    button_label: 'Continue',
+    data: { phase: 'self_estimate' },
+    on_start: () => document.body.classList.remove('trial-cursor-hidden'),
+    on_finish: (d) => {
+      const eo = Number(d.response.est_old), en = Number(d.response.est_new);
+      d.est_n_seen_correct = eo; d.est_n_new_correct = en;
+      d.est_hit_rate = Math.round((eo / nOld) * 10000) / 10000;
+      d.est_correct_rejection_rate = Math.round((en / nNew) * 10000) / 10000;
+    },
+  });
 
   timeline.push({
     type: jsPsychHtmlKeyboardResponse, stimulus: '<p>Saving your data... please do not close this window.</p>',
